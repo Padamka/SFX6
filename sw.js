@@ -1,25 +1,57 @@
-const CACHE_NAME = 'pk-fx-v1';
-
-// Ide soroljuk fel, miket kell a telefonnak elmentenie offline használatra
-const urlsToCache = [
+const CACHE_NAME = 'pk-fx-v2';
+const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './szinpad.jpg' 
+  './szinpad.jpg'
 ];
 
-// 1. Telepítéskor betölti a fájlokat a raktárba
-self.addEventListener('install', event => {
+// Telepítéskor elmentjük a fontos fájlokat
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
   );
+  self.skipWaiting();
 });
 
-// 2. Amikor a telefon kéri a fájlt, először a raktárban nézzük meg, ne a neten
-self.addEventListener('fetch', event => {
+// Régi cache-ek takarítása, ha frissítjük az appot
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            return caches.delete(cache);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// Hálózati kérések elfogása (Network First stratégia)
+self.addEventListener('fetch', (event) => {
+  // A Firebase adatbázis hívásokat nem cacheljük, azokat hagyjuk békén
+  if (event.request.url.includes('firebasedatabase.app') || event.request.url.includes('google.com')) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        // Ha van net, lementjük a legfrissebb verziót a memóriába
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseClone);
+        });
+        return response;
+      })
+      .catch(() => {
+        // Ha nincs net, odaadjuk a legutolsó elmentett verziót
+        return caches.match(event.request);
+      })
   );
 });
