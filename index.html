@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pamkutya FX (Pro Live)</title>
+  <link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#030508">
+<link rel="apple-touch-icon" href="./icon-192.png">
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
 
@@ -919,6 +922,14 @@
   setPatchMode('gep'); 
   buildFlatSchedule();
   renderList();
+  // Service Worker (Offline motor) regisztrálása
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('Service Worker telepítve!'))
+      .catch(err => console.log('Service Worker hiba:', err));
+  });
+}
   initSchedule();
   updateLiveStatus();
   setInterval(updateLiveStatus, 60000); 
